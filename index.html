@@ -147,8 +147,6 @@
       display: flex;
       flex-direction: column;
       gap: 5px;
-      max-height: 220px;
-      overflow-y: auto;
     }
 
     .item-entry {
@@ -160,6 +158,39 @@
       border-radius: 5px;
       border: 1px solid var(--border);
       font-size: 0.78rem;
+      min-width: 0;
+    }
+
+    /* ---- Pagination ---- */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      gap: 6px;
+    }
+
+    .pagination .btn-page {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .pagination .btn-page:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .pagination .page-info {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      flex: 1;
+      text-align: center;
     }
 
     .dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
@@ -266,10 +297,15 @@
     </div>
 
     <!-- Item list -->
-    <div class="section" style="flex:1;min-height:0">
+    <div class="section">
       <h3>Items (<span id="itemCount">0</span>)</h3>
       <div class="item-list" id="itemList">
         <div class="empty">No items added yet</div>
+      </div>
+      <div class="pagination" id="pagination" style="display:none">
+        <button class="btn-page" id="btnPrev" onclick="changePage(-1)" disabled>‹ Prev</button>
+        <span class="page-info" id="pageInfo"></span>
+        <button class="btn-page" id="btnNext" onclick="changePage(1)">Next ›</button>
       </div>
     </div>
 
@@ -433,6 +469,8 @@
   // ---- App State ----
   let items = [];
   let uid = 1;
+  let currentPage = 1;
+  const ITEMS_PER_PAGE = 5;
 
   // Preset colours for auto-assignment
   const COLOURS = [
@@ -448,6 +486,7 @@
     const color = document.getElementById('iColor').value;
 
     items.push({ id: uid++, name, w, h, d, color, packed: null });
+    currentPage = Math.ceil(items.length / ITEMS_PER_PAGE);
     renderList();
 
     // auto-increment name number
@@ -473,11 +512,21 @@
   function renderList() {
     document.getElementById('itemCount').textContent = items.length;
     const el = document.getElementById('itemList');
+    const paginationEl = document.getElementById('pagination');
+
     if (items.length === 0) {
       el.innerHTML = '<div class="empty">No items added yet</div>';
+      paginationEl.style.display = 'none';
       return;
     }
-    el.innerHTML = items.map(item => `
+
+    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = items.slice(start, start + ITEMS_PER_PAGE);
+
+    el.innerHTML = pageItems.map(item => `
       <div class="item-entry">
         <div class="dot" style="background:${item.color}"></div>
         <div class="item-info">
@@ -489,6 +538,21 @@
         <button class="btn btn-danger" onclick="removeItem(${item.id})">×</button>
       </div>
     `).join('');
+
+    if (totalPages > 1) {
+      paginationEl.style.display = 'flex';
+      document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+      document.getElementById('btnPrev').disabled = currentPage === 1;
+      document.getElementById('btnNext').disabled = currentPage === totalPages;
+    } else {
+      paginationEl.style.display = 'none';
+    }
+  }
+
+  function changePage(delta) {
+    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+    currentPage = Math.max(1, Math.min(currentPage + delta, totalPages));
+    renderList();
   }
 
   // ---- 3D Bin Packing: Guillotine algorithm ----
